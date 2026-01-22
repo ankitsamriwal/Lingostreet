@@ -1,0 +1,7 @@
+{
+  "name": "LingoStreet: Regional Slang Coach",
+  "description": "A linguistic exploration tool that teaches you the most common slang, street talk, and regional insults from any city or country in the world, complete with context and 'heat' levels.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
