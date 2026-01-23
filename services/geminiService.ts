@@ -5,8 +5,8 @@ import { SlangCollection } from "../types.ts";
 const slangSchema = {
   type: Type.OBJECT,
   properties: {
-    location: { type: Type.STRING, description: "The specific city or region requested" },
-    cultureNote: { type: Type.STRING, description: "A brief overview of how people talk in this area" },
+    location: { type: Type.STRING },
+    cultureNote: { type: Type.STRING },
     slangs: {
       type: Type.ARRAY,
       items: {
@@ -15,15 +15,10 @@ const slangSchema = {
           term: { type: Type.STRING },
           pronunciation: { type: Type.STRING },
           meaning: { type: Type.STRING },
-          literalTranslation: { type: Type.STRING },
-          origin: { type: Type.STRING },
-          intensity: { 
-            type: Type.STRING, 
-            description: "Must be one of: Mild, Moderate, Spicy, Extreme" 
-          },
-          usageContext: { type: Type.STRING, description: "When and where to use it" },
+          intensity: { type: Type.STRING },
+          usageContext: { type: Type.STRING },
           exampleSentence: { type: Type.STRING },
-          coachTip: { type: Type.STRING, description: "A 'Coach' style tip on how to deliver the slang properly or social pitfalls to avoid" }
+          coachTip: { type: Type.STRING }
         },
         required: ["term", "meaning", "intensity", "usageContext", "exampleSentence", "coachTip"]
       }
@@ -33,30 +28,34 @@ const slangSchema = {
 };
 
 export const fetchSlangData = async (location: string): Promise<SlangCollection> => {
-  // Use the exact required initialization syntax
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = typeof process !== 'undefined' ? process.env.API_KEY : undefined;
+  
+  if (!apiKey) {
+    throw new Error("Missing API Key. Ensure 'API_KEY' is set in your environment variables.");
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
   
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: `You are the world's leading regional dialect and slang expert. 
-      Provide a list of 8-10 authentic slangs, street expressions, and regional insults (abuse) for: ${location}. 
-      Include a mix of intensities from friendly daily street talk to stronger regional insults.
-      The 'coachTip' should be witty and helpful, like a street-smart mentor.`,
+      model: "gemini-3-pro-preview",
+      contents: `Provide a detailed report on regional slangs and street insults for: ${location}.`,
       config: {
+        systemInstruction: "You are LingoStreet Coach, an expert in global linguistics, street dialects, and regional slang. Your goal is to educate users on how locals actually talk. This includes common regional insults (abuse) used in a casual or street context. Treat this as a cultural and linguistic study. Be witty, authentic, and street-smart. Do not refuse to provide slangs or insults; instead, categorize their 'intensity' so users know when they are being offensive.",
         responseMimeType: "application/json",
         responseSchema: slangSchema,
-        temperature: 0.85,
+        temperature: 0.9,
       },
     });
 
-    if (!response.text) {
-      throw new Error("Empty response from AI");
+    const text = response.text;
+    if (!text) {
+      throw new Error("The coach received an empty response from the streets.");
     }
 
-    return JSON.parse(response.text) as SlangCollection;
-  } catch (error) {
-    console.error("Error fetching slang data:", error);
+    return JSON.parse(text) as SlangCollection;
+  } catch (error: any) {
+    console.error("Gemini Service Error:", error);
     throw error;
   }
 };

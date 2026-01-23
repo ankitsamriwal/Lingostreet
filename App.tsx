@@ -9,7 +9,7 @@ const App: React.FC = () => {
   const [data, setData] = useState<SlangCollection | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [history, setHistory] = useState<string[]>(['London', 'New York City', 'Mumbai', 'Sydney']);
+  const [history, setHistory] = useState<string[]>(['London', 'Brooklyn', 'Mumbai', 'Sydney']);
 
   const handleSearch = useCallback(async (location: string) => {
     if (!location.trim()) return;
@@ -19,11 +19,16 @@ const App: React.FC = () => {
     try {
       const result = await fetchSlangData(location);
       setData(result);
-      if (!history.includes(location)) {
-        setHistory(prev => [location, ...prev.slice(0, 4)]);
+      if (!history.includes(location) && location !== "My Current Location") {
+        setHistory(prev => [location, ...prev.slice(0, 3)]);
       }
     } catch (err: any) {
-      setError("The coach is speechless! This area might be too obscure or the streets are quiet right now.");
+      const message = err.message || "The streets are quiet right now.";
+      if (message.includes("API Key")) {
+        setError("API Key Error: Please check your project environment variables.");
+      } else {
+        setError(`Coach's Error: ${message}`);
+      }
       console.error(err);
     } finally {
       setIsLoading(false);
@@ -38,8 +43,9 @@ const App: React.FC = () => {
 
     setIsLoading(true);
     navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        handleSearch("My Current Coordinates");
+      (position) => {
+        // Instead of coordinates, we try to fetch for the current context
+        handleSearch("My current region");
       },
       () => {
         setError("Permission denied. Enter your location manually.");
@@ -72,7 +78,7 @@ const App: React.FC = () => {
 
       {/* Search Section */}
       <section className="w-full max-w-3xl mb-16">
-        <div className="relative">
+        <div className="relative group">
           <div className="absolute -inset-1 bg-gradient-to-r from-violet-600 to-fuchsia-600 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
           <div className="relative flex flex-col md:flex-row gap-3">
             <input
@@ -126,6 +132,7 @@ const App: React.FC = () => {
               <i className="fa-solid fa-circle-exclamation text-xl"></i>
             </div>
             <p className="font-semibold">{error}</p>
+            <p className="text-xs text-rose-500/60 mt-2">Try refreshing or checking your API configuration.</p>
           </div>
         )}
 
@@ -139,7 +146,7 @@ const App: React.FC = () => {
             </div>
             <div className="text-center">
               <p className="text-2xl font-bold text-white mb-2">Talking to the locals...</p>
-              <p className="text-slate-500">Decrypting the latest street terminology for {query}</p>
+              <p className="text-slate-500">Decrypting the latest street terminology for {query || 'the area'}</p>
             </div>
           </div>
         ) : data ? (
@@ -188,7 +195,7 @@ const App: React.FC = () => {
               </div>
               <p className="text-sm text-slate-500 leading-relaxed italic">
                 <strong className="text-slate-400 uppercase text-xs block mb-1">Language Advisory:</strong>
-                Street talk can be sharp. Slang marked as <span className="text-rose-400">Extreme</span> or <span className="text-orange-400">Spicy</span> should be used with extreme caution. Respect local culture and read the room before using these expressions.
+                Street talk can be sharp. Slang marked as Extreme or Spicy should be used with extreme caution. Respect local culture and read the room before using these expressions.
               </p>
             </div>
           </div>
