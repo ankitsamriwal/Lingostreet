@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { fetchSlangData } from './services/geminiService.ts';
 import { SlangCollection } from './types.ts';
 import { SlangCard } from './components/SlangCard.tsx';
@@ -10,6 +10,16 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<string[]>(['London', 'Brooklyn', 'Mumbai', 'Sydney']);
+  const [hasKey, setHasKey] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    // Check for API key presence on mount
+    try {
+      setHasKey(!!process.env.API_KEY);
+    } catch {
+      setHasKey(false);
+    }
+  }, []);
 
   const handleSearch = useCallback(async (location: string) => {
     if (!location.trim()) return;
@@ -19,17 +29,22 @@ const App: React.FC = () => {
     try {
       const result = await fetchSlangData(location);
       setData(result);
-      if (!history.includes(location) && location !== "My Current Location") {
+      if (!history.includes(location) && !location.includes("Local region")) {
         setHistory(prev => [location, ...prev.slice(0, 3)]);
       }
     } catch (err: any) {
-      const message = err.message || "The streets are quiet right now.";
-      if (message.includes("API Key")) {
-        setError("API Key Error: Please check your project environment variables.");
-      } else {
-        setError(`Coach's Error: ${message}`);
+      console.error("Search Error:", err);
+      let friendlyMessage = err.message || "Something went wrong.";
+      
+      if (err.message === "API_KEY_MISSING") {
+        friendlyMessage = "API Key not found in Environment Variables. Make sure you named it 'API_KEY' exactly.";
+      } else if (err.message?.includes("SAFETY")) {
+        friendlyMessage = "Safety Filter: The coach is legally restricted from teaching certain terms in this specific region. Try a larger city or different country.";
+      } else if (err.status === 401 || err.status === 403) {
+        friendlyMessage = "Invalid API Key. Please double-check your key in Google AI Studio.";
       }
-      console.error(err);
+
+      setError(friendlyMessage);
     } finally {
       setIsLoading(false);
     }
@@ -44,8 +59,7 @@ const App: React.FC = () => {
     setIsLoading(true);
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        // Instead of coordinates, we try to fetch for the current context
-        handleSearch("My current region");
+        handleSearch(`Local region near ${position.coords.latitude.toFixed(2)}, ${position.coords.longitude.toFixed(2)}`);
       },
       () => {
         setError("Permission denied. Enter your location manually.");
@@ -56,6 +70,15 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col items-center p-4 md:p-8 max-w-7xl mx-auto">
+      {/* API Key Status Indicator */}
+      {hasKey === false && (
+        <div className="fixed top-4 right-4 z-50 animate-bounce">
+          <div className="bg-rose-600 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg border border-rose-400">
+            <i className="fa-solid fa-key mr-2"></i> API KEY MISSING
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="w-full text-center mt-12 mb-16">
         <div className="inline-flex items-center justify-center space-x-4 mb-6">
@@ -86,7 +109,7 @@ const App: React.FC = () => {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch(query)}
-              placeholder="Where are we heading? (e.g. London, Bronx, Lagos)..."
+              placeholder="Enter a city or country..."
               className="flex-grow bg-slate-900 border border-slate-700/50 rounded-xl py-5 px-6 focus:outline-none focus:ring-2 focus:ring-violet-500 transition-all text-xl shadow-2xl"
             />
             <button 
@@ -127,12 +150,16 @@ const App: React.FC = () => {
       {/* Main Content */}
       <main className="w-full">
         {error && (
-          <div className="p-8 rounded-2xl bg-rose-500/5 border border-rose-500/20 text-rose-400 text-center mb-12 flex flex-col items-center">
+          <div className="p-8 rounded-2xl bg-rose-500/5 border border-rose-500/20 text-rose-400 text-center mb-12 flex flex-col items-center max-w-2xl mx-auto shadow-2xl">
             <div className="w-12 h-12 bg-rose-500/20 rounded-full flex items-center justify-center mb-4">
               <i className="fa-solid fa-circle-exclamation text-xl"></i>
             </div>
-            <p className="font-semibold">{error}</p>
-            <p className="text-xs text-rose-500/60 mt-2">Try refreshing or checking your API configuration.</p>
+            <p className="font-bold text-lg">{error}</p>
+            {error.includes("Key") && (
+              <p className="text-xs text-rose-500/60 mt-4 leading-relaxed">
+                Ensure you have added a variable named <strong>API_KEY</strong> (no other prefix) in your dashboard and <strong>Redeployed</strong> the application.
+              </p>
+            )}
           </div>
         )}
 
@@ -145,8 +172,8 @@ const App: React.FC = () => {
               </div>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-bold text-white mb-2">Talking to the locals...</p>
-              <p className="text-slate-500">Decrypting the latest street terminology for {query || 'the area'}</p>
+              <p className="text-2xl font-bold text-white mb-2 tracking-tight">Consulting the streets...</p>
+              <p className="text-slate-500">Decrypting regional terminology for {query || 'the area'}</p>
             </div>
           </div>
         ) : data ? (
@@ -190,36 +217,29 @@ const App: React.FC = () => {
 
             {/* Warning Box */}
             <div className="max-w-4xl mx-auto p-8 rounded-3xl bg-amber-500/[0.03] border border-amber-500/10 flex gap-6 items-center">
-              <div className="text-4xl text-amber-500/40">
+              <div className="text-4xl text-amber-500/40 shrink-0">
                 <i className="fa-solid fa-triangle-exclamation"></i>
               </div>
               <p className="text-sm text-slate-500 leading-relaxed italic">
-                <strong className="text-slate-400 uppercase text-xs block mb-1">Language Advisory:</strong>
-                Street talk can be sharp. Slang marked as Extreme or Spicy should be used with extreme caution. Respect local culture and read the room before using these expressions.
+                <strong className="text-slate-400 uppercase text-xs block mb-1 tracking-wider">Linguistic Advisory:</strong>
+                Street talk is raw and regional. Expressions marked as <strong>Spicy</strong> or <strong>Extreme</strong> are often insults. Use them at your own risk. Respect the local culture.
               </p>
             </div>
           </div>
         ) : (
-          <div className="text-center py-32">
+          <div className="text-center py-32 opacity-50 grayscale hover:grayscale-0 transition-all duration-700">
             <div className="w-24 h-24 bg-slate-900 rounded-3xl mx-auto flex items-center justify-center mb-8 border border-slate-800 rotate-12">
               <i className="fa-solid fa-map-location-dot text-4xl text-slate-700"></i>
             </div>
-            <h3 className="text-2xl font-bold text-slate-600 mb-2">Your journey starts here.</h3>
-            <p className="text-slate-700">Type a city name above to get your first slang lesson.</p>
+            <h3 className="text-2xl font-bold text-slate-600 mb-2">The Streets are Waiting.</h3>
+            <p className="text-slate-700 max-w-xs mx-auto">Enter a city above to start your cultural immersion training.</p>
           </div>
         )}
       </main>
 
-      <footer className="mt-24 pb-12 text-center text-slate-700 text-xs font-bold tracking-widest uppercase">
-        LingoStreet AI &copy; {new Date().getFullYear()} • Street Dialect Intelligence
+      <footer className="mt-24 pb-12 text-center text-slate-700 text-[10px] font-bold tracking-[0.3em] uppercase">
+        LingoStreet AI &copy; {new Date().getFullYear()} • Socio-Linguistic Analysis Engine
       </footer>
-
-      <style>{`
-        @keyframes shimmer {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(300%); }
-        }
-      `}</style>
     </div>
   );
 };
