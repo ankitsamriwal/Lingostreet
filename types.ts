@@ -15,6 +15,7 @@ export interface SlangItem {
   intensity: Intensity;
   usageContext: string;
   exampleSentence: string;
+  coachTip: string;
 }
 
 export interface SlangCollection {

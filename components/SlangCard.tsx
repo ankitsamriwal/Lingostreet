@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { SlangItem, Intensity } from '../types';
+import { SlangItem, Intensity } from '../types.ts';
 
 interface SlangCardProps {
   item: SlangItem;
@@ -15,7 +15,7 @@ const IntensityBadge: React.FC<{ level: Intensity }> = ({ level }) => {
   };
 
   return (
-    <span className={`px-2 py-0.5 rounded-full text-xs border ${styles[level]}`}>
+    <span className={`px-2 py-0.5 rounded-full text-[10px] border uppercase tracking-wider ${styles[level] || styles[Intensity.MILD]}`}>
       {level}
     </span>
   );
@@ -26,61 +26,61 @@ export const SlangCard: React.FC<SlangCardProps> = ({ item }) => {
 
   return (
     <div 
-      className="group perspective-1000 h-64 w-full cursor-pointer"
+      className="group perspective-1000 h-80 w-full cursor-pointer"
       onClick={() => setIsFlipped(!isFlipped)}
     >
-      <div className={`relative w-full h-full transition-all duration-500 transform-style-3d ${isFlipped ? 'rotate-y-180' : ''}`}>
+      <div className={`relative w-full h-full transition-all duration-700 transform-style-3d ${isFlipped ? 'rotate-y-180' : ''}`}>
         
         {/* Front Face */}
-        <div className="absolute inset-0 backface-hidden glass-morphism p-6 rounded-2xl flex flex-col justify-between hover:border-violet-500/50 transition-colors">
+        <div className="absolute inset-0 backface-hidden glass-morphism p-6 rounded-3xl flex flex-col justify-between hover:border-violet-500/50 transition-all border border-white/5 shadow-2xl">
           <div>
-            <div className="flex justify-between items-start mb-2">
+            <div className="flex justify-between items-start mb-4">
               <IntensityBadge level={item.intensity} />
-              <i className="fa-solid fa-language text-slate-500"></i>
+              <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 group-hover:text-violet-400 transition-colors">
+                <i className="fa-solid fa-volume-high text-xs"></i>
+              </div>
             </div>
-            <h3 className="text-2xl font-bold text-violet-300 mb-1">{item.term}</h3>
+            <h3 className="text-3xl font-black text-white mb-1 group-hover:text-violet-400 transition-colors tracking-tight">{item.term}</h3>
             {item.pronunciation && (
-              <p className="text-sm text-slate-400 italic mb-3">/{item.pronunciation}/</p>
+              <p className="text-sm text-slate-500 italic mb-4 font-medium tracking-wide">/{item.pronunciation}/</p>
             )}
-            <p className="text-slate-300 line-clamp-3 leading-relaxed">
+            <p className="text-slate-300 line-clamp-4 leading-relaxed font-medium">
               {item.meaning}
             </p>
           </div>
-          <div className="text-xs text-slate-500 font-medium tracking-wider uppercase">
-            Click to see usage context
+          <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/5">
+             <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Flip for Context</span>
+             <i className="fa-solid fa-arrow-right-rotate text-slate-600 text-xs"></i>
           </div>
         </div>
 
         {/* Back Face (Rotated) */}
-        <div className="absolute inset-0 backface-hidden glass-morphism p-6 rounded-2xl rotate-y-180 flex flex-col justify-between bg-violet-950/20 border-violet-500/30">
-          <div className="space-y-3">
+        <div className="absolute inset-0 backface-hidden glass-morphism p-6 rounded-3xl rotate-y-180 flex flex-col justify-between bg-violet-950/20 border-violet-500/40 shadow-[0_0_40px_rgba(139,92,246,0.1)]">
+          <div className="space-y-4 overflow-y-auto scrollbar-hide">
             <div>
-              <p className="text-xs font-semibold text-violet-400 uppercase tracking-tighter">Usage Context</p>
-              <p className="text-sm text-slate-200">{item.usageContext}</p>
+              <p className="text-[10px] font-bold text-violet-400 uppercase tracking-widest mb-1 flex items-center gap-2">
+                <i className="fa-solid fa-quote-left"></i> Example
+              </p>
+              <p className="text-sm text-slate-100 italic font-medium leading-relaxed">"{item.exampleSentence}"</p>
             </div>
             <div>
-              <p className="text-xs font-semibold text-violet-400 uppercase tracking-tighter">Example</p>
-              <p className="text-sm text-slate-100 italic">"{item.exampleSentence}"</p>
+              <p className="text-[10px] font-bold text-violet-400 uppercase tracking-widest mb-1 flex items-center gap-2">
+                <i className="fa-solid fa-map-pin"></i> Usage
+              </p>
+              <p className="text-xs text-slate-300 leading-relaxed">{item.usageContext}</p>
             </div>
-            {item.origin && (
-              <div>
-                <p className="text-xs font-semibold text-violet-400 uppercase tracking-tighter">Origin</p>
-                <p className="text-xs text-slate-400">{item.origin}</p>
-              </div>
-            )}
+            <div className="p-3 bg-violet-600/10 rounded-xl border border-violet-500/20">
+              <p className="text-[10px] font-bold text-fuchsia-400 uppercase tracking-widest mb-1 flex items-center gap-2">
+                <i className="fa-solid fa-lightbulb"></i> Coach Tip
+              </p>
+              <p className="text-xs text-slate-200 font-medium italic">"{item.coachTip}"</p>
+            </div>
           </div>
-          <div className="text-xs text-slate-500 text-center">
+          <div className="text-[10px] text-slate-500 text-center font-bold uppercase tracking-widest mt-4">
             Tap to return
           </div>
         </div>
       </div>
-
-      <style>{`
-        .perspective-1000 { perspective: 1000px; }
-        .transform-style-3d { transform-style: preserve-3d; }
-        .backface-hidden { backface-visibility: hidden; }
-        .rotate-y-180 { transform: rotateY(180deg); }
-      `}</style>
     </div>
   );
 };
